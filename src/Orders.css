@@ -1,0 +1,97 @@
+/* === Global Theme Styles === */
+.orders-container.light-theme {
+  background-color: #f8f9fa;
+  color: #212529;
+  min-height: 100vh;
+  padding: 20px;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.orders-container.dark-theme {
+  background-color: #121212;
+  color: #f1f1f1;
+  min-height: 100vh;
+  padding: 20px;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* === Card Styles === */
+.orders-container .card {
+  max-width: 280px; /* smaller width */
+  margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.orders-container .card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.orders-container .card-body {
+  padding: 1rem;
+}
+
+.orders-container .card-title {
+  font-size: 1.1rem;
+}
+
+/* === Delete Button (Top-right corner) === */
+.delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border-radius: 50%;
+  line-height: 1;
+  z-index: 10;
+  transition: transform 0.2s ease;
+}
+
+.delete-btn:hover {
+  transform: scale(1.2);
+}
+
+/* === List Items === */
+.orders-container .list-group-item {
+  font-size: 0.9rem;
+  border: none;
+  padding: 8px 10px;
+}
+
+.orders-container .list-group-item:not(:last-child) {
+  border-bottom: 1px solid rgba(200, 200, 200, 0.2);
+}
+
+/* === Product Images === */
+.order-item-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #fff;
+  padding: 3px;
+  border: 1px solid #ddd;
+}
+
+/* === Toggle Button === */
+.orders-container .btn-outline-light,
+.orders-container .btn-outline-dark {
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+}
+
+.orders-container .btn-outline-light:hover,
+.orders-container .btn-outline-dark:hover {
+  transform: scale(1.05);
+}
+
+/* === Footer === */
+.orders-container .card-footer {
+  font-size: 0.95rem;
+  padding: 0.8rem 1rem;
+}
