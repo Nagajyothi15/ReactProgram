@@ -5,15 +5,10 @@ import { useNavigate, NavLink } from "react-router-dom";
 import { registerUser } from "./store";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import "./SignUp.css"; // Import styles
+import "./SignUp.css";
 
 function SignUp() {
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm();
+  const { register, handleSubmit, watch, formState: { errors } } = useForm();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const password = watch("password");
@@ -60,7 +55,7 @@ function SignUp() {
             })}
           />
           {errors.password && <small className="error-msg">{errors.password.message}</small>}
-            <br />
+          <br />
           <input
             className="form-input"
             placeholder="Confirm Password"

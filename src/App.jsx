@@ -18,13 +18,16 @@ import NotFound from './NotFound';
 import Login from './Login';
 
 import './App.css';
+import Search from "./Search";
 
 function App() {
+
   const cartItems = useSelector((state) => state.cart || []);
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const { currentUser: user } = useSelector((state) => state.userAuth);
   const dispatch = useDispatch();
+
 
   return (
     <BrowserRouter>
@@ -35,15 +38,7 @@ function App() {
             <NavLink to="/" className="navbar-brand">Sizzle&Spice</NavLink>
           </div>
 
-          <form className="d-flex search-bar">
-            <input
-              className="form-control me-2"
-              type="search"
-              placeholder="Search products..."
-              aria-label="Search"
-            />
-            <button className="btn btn-outline-success" type="submit">Search</button>
-          </form>
+           <Search /> {/* ✅ Search component here */}
         </div>
 
         {/* Navigation */}

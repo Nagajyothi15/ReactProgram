@@ -44,7 +44,6 @@ function Chocolate() {
             <p>
               <b>Price:</b> ₹{chocolate.price}
             </p>
-            
 
             <button
               className="btn btn-success"
@@ -82,6 +81,7 @@ function Chocolate() {
           Next ➡
         </button>
       </div>
+
       {/* Footer */}
       <footer className="home-footer">
         <p>© 2025 MyStore. All rights reserved.</p>

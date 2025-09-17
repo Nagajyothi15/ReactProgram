@@ -4,18 +4,9 @@ import "./Orders.css";
 
 function Orders() {
   const [darkMode, setDarkMode] = useState(true);
-  
-  // ✅ Updated selector to use orders slice
-  let orders = useSelector((state) => state.orders.orders || []);
 
-  function calculateFinalAmount(purchase) {
-    const total = Number(purchase.total) || 0;
-    const discount = Number(purchase.discount) || 0;
-    const tax = Number(purchase.tax) || 0;
-    const shipping = Number(purchase.shipping) || 0;
-
-    return (total - discount + tax + shipping).toFixed(2);
-  }
+  // orders slice must be state.orders (check store.js)
+  let orders = useSelector((state) => state.orders || []);
 
   return (
     <div className={`orders-container container my-4 ${darkMode ? "dark-theme" : "light-theme"}`}>
@@ -48,6 +39,7 @@ function Orders() {
                   <p className="mb-1">Coupon: ₹{purchase.coupon || "N/A"}</p>
                   <p className="mb-1">Tax: ₹{purchase.tax}</p>
                   <p className="mb-3">Shipping: ₹{purchase.shipping}</p>
+                  <p className="mb-3"><strong>Payment:</strong> {purchase.paymentMethod}</p>
 
                   <h6 className="fw-semibold">Items:</h6>
                   <ul className="list-group list-group-flush">
@@ -63,7 +55,7 @@ function Orders() {
                   </ul>
                 </div>
                 <div className={`card-footer text-end fw-bold ${darkMode ? "bg-secondary text-warning" : "bg-light text-dark"}`}>
-                  Final Amount: ₹{calculateFinalAmount(purchase)}
+                  Final Amount: ₹{purchase.finalPrice}
                 </div>
               </div>
             </div>

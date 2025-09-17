@@ -1,122 +1,127 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
   addOrder,
   clearCart,
-  decrementQuantity,
   incrementQuantity,
+  decrementQuantity,
   removeFromCart,
 } from "./store";
-import {
-  calculateButtonDiscount,
-  calculateTotal,
-  getcouponDiscount,
-} from "./discountUtils";
-import "./Cart.css";
-import emailjs from "@emailjs/browser";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import confetti from "canvas-confetti";
 import QRCode from "react-qr-code";
+import confetti from "canvas-confetti";
+import "./Cart.css";
+import { getCouponDiscount } from "./DiscountUtils";
 
 function Cart() {
   const cartItems = useSelector((state) => state.cart || []);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const [buttonDiscount, setButtonDiscount] = useState(0);
-  const totalPrice = calculateTotal(cartItems);
-  const buttonDiscountAmount = calculateButtonDiscount(totalPrice, buttonDiscount);
-
-  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState("");
   const [couponResult, setCouponResult] = useState({
     isValid: false,
     discountPercent: 0,
     discountAmount: 0,
   });
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
 
+  // ✅ Calculate totals
+  const calculateTotals = () => {
+    const totalPrice = cartItems.reduce(
+      (acc, item) => acc + item.price * item.quantity,
+      0
+    );
+    const buttonDiscountAmount = (totalPrice * buttonDiscount) / 100;
+    const couponDiscountAmount = couponResult.discountAmount || 0;
+
+    let finalPrice = totalPrice - buttonDiscountAmount - couponDiscountAmount;
+    const taxAmount = finalPrice * 0.18;
+    const shipping = 50;
+    finalPrice += taxAmount + shipping;
+
+    return {
+      totalPrice,
+      buttonDiscountAmount,
+      couponDiscountAmount,
+      taxAmount,
+      shipping,
+      finalPrice,
+    };
+  };
+
+  const {
+    totalPrice,
+    buttonDiscountAmount,
+    couponDiscountAmount,
+    taxAmount,
+    shipping,
+    finalPrice,
+  } = calculateTotals();
+
+  // ✅ Apply Coupon
   const handleApplyCoupon = () => {
-    const result = getcouponDiscount(couponCode, totalPrice);
+    const result = getCouponDiscount(coupon, totalPrice);
     setCouponResult(result);
 
     if (result.isValid) {
-      toast.success(
-        `🎉 Coupon "${couponCode}" applied! ${result.discountPercent}% off`
-      );
-      confetti({
-        particleCount: 150,
-        spread: 80,
-        origin: { y: 0.6 },
-      });
+      confetti({ particleCount: 30, angle: 90, spread: 30, origin: { y: 0.6 } });
+      toast.success(`🎉 Coupon Applied: ${result.discountPercent}% OFF`);
     } else {
-      toast.error("❌ Invalid Coupon Code");
+      toast.error("❌ Invalid Coupon Code!");
     }
   };
 
-  let finalPrice = totalPrice - buttonDiscountAmount - couponResult.discountAmount;
-  let taxAmount = finalPrice * 0.18;
-  finalPrice += taxAmount + 50; // Shipping ₹50
-
-  const [customerEmail, setCustomerEmail] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
-
-  const templateParams = {
-    orders: cartItems.map((item) => ({
-      name: item.name,
-      price: (item.price * item.quantity).toFixed(2),
-      units: item.quantity,
-    })),
-    cost: {
-      shipping: 50,
-      tax: taxAmount.toFixed(2),
-      total: finalPrice.toFixed(2),
-    },
-    email: customerEmail,
-  };
-
-  const handleCheckout = () => {
+  // ✅ Complete Purchase
+  const handleCompletePurchase = () => {
     if (!customerEmail) {
       toast.warning("⚠️ Please enter your email");
       return;
     }
-    emailjs
-      .send(
-        "service_o6rk94r",
-        "template_13wjjav",
-        templateParams,
-        "ohjHip5DiZ9UO5uHy"
-      )
-      .then(() => toast.success("✅ Order placed successfully!"))
-      .catch(() => toast.error("❌ Failed to process order"));
-  };
 
-  const handleCompletePurchase = () => {
-    const purchaseDetails = {
+    if (!paymentMethod) {
+      toast.warning("⚠️ Please select a payment method");
+      return;
+    }
+
+    if (cartItems.length === 0) {
+      toast.info("🛒 Cart is empty");
+      return;
+    }
+
+    const orderDetails = {
       date: new Date().toLocaleString(),
       items: cartItems,
-      total: finalPrice.toFixed(2),
+      total: totalPrice.toFixed(2),
       discount: buttonDiscountAmount.toFixed(2),
-      coupon: couponResult.discountAmount.toFixed(2),
+      coupon: couponDiscountAmount.toFixed(2),
       tax: taxAmount.toFixed(2),
-      shipping: 50,
-      paymentMethod: paymentMethod || "Not selected",
+      shipping,
+      finalTotal: finalPrice.toFixed(2),
+      paymentMethod,
+      customerEmail,
     };
-    dispatch(addOrder(purchaseDetails));
+
+    dispatch(addOrder(orderDetails));
     dispatch(clearCart());
-    
-    toast.success("🎉 Purchase completed and added to orders!");
+    toast.success("🎉 Purchase completed! Order added.");
     navigate("/orders");
   };
 
   return (
     <div className="cart-page">
-      {/* Left: Cart Items */}
+      {/* ✅ Cart Items */}
       <div className="cart-items">
         <h2>🛒 Shopping Cart</h2>
         {cartItems.length === 0 ? (
           <p className="empty-msg">Your cart is empty</p>
         ) : (
           cartItems.map((item) => (
-            <div key={item.name} className="cart-card">
+            <div key={item.id} className="cart-card">
               <img src={item.imageUrl} alt={item.name} className="item-img" />
               <div className="item-info">
                 <h3>{item.name}</h3>
@@ -125,29 +130,16 @@ function Cart() {
                   <strong>₹{item.price * item.quantity}</strong>
                 </p>
                 <div className="item-actions">
-                  <button
-                    onClick={() => {
-                      dispatch(decrementQuantity(item));
-                      toast.info(`➖ 1 ${item.name} removed from cart`);
-                    }}
-                  >
+                  <button onClick={() => dispatch(decrementQuantity(item))}>
                     -
                   </button>
                   <span>{item.quantity}</span>
-                  <button
-                    onClick={() => {
-                      dispatch(incrementQuantity(item));
-                      toast.success(`➕ 1 more ${item.name} added to cart`);
-                    }}
-                  >
+                  <button onClick={() => dispatch(incrementQuantity(item))}>
                     +
                   </button>
                   <button
                     className="remove-btn"
-                    onClick={() => {
-                      dispatch(removeFromCart(item));
-                      toast.error(`🗑️ ${item.name} removed from cart`);
-                    }}
+                    onClick={() => dispatch(removeFromCart(item))}
                   >
                     Remove
                   </button>
@@ -158,109 +150,122 @@ function Cart() {
         )}
       </div>
 
-      {/* Right: Summary */}
+      {/* ✅ Summary */}
       <div className="cart-summary">
         <h2>💳 Order Summary</h2>
         <div className="summary-row">
-          <h5><span>Subtotal:</span></h5> <span>₹{totalPrice}</span>
+          <span>Subtotal:</span> <span>₹{totalPrice}</span>
         </div>
         <div className="summary-row">
-          <span>💸 Discount:</span> <span>-₹{buttonDiscountAmount}</span>
+          <span>Discount:</span>{" "}
+          <span>-₹{buttonDiscountAmount.toFixed(2)}</span>
         </div>
         <div className="summary-row">
-          <span>🏷️ Coupon:</span>{" "}
+          <span>Coupon:</span>{" "}
           <span>
-            -₹{couponResult.discountAmount} ({couponResult.discountPercent}%)
+            -₹{couponDiscountAmount.toFixed(2)} ({couponResult.discountPercent}%)
           </span>
         </div>
         <div className="summary-row">
-          <span>🧾 GST (18%):</span> <span>₹{taxAmount.toFixed(2)}</span>
+          <span>Tax (18%):</span> <span>₹{taxAmount.toFixed(2)}</span>
         </div>
         <div className="summary-row">
-          <span>📦 Shipping:</span> <span>₹50</span>
+          <span>Shipping:</span> <span>₹{shipping}</span>
         </div>
         <hr />
         <div className="summary-row total">
-          <span>💰 Final Total:</span> <span>₹{finalPrice.toFixed(2)}</span>
+          <span>Final Total:</span> <span>₹{finalPrice.toFixed(2)}</span>
         </div>
 
-        {/* Quick Discounts */}
         <h4>🎁 Quick Discounts</h4>
-        <div className="discount-buttons">
-          {[10, 20, 30].map((percent) => (
-            <button
-              key={percent}
-              className="discount-btn-sm"
-              onClick={() => setButtonDiscount(percent)}
-            >
-              {percent}% OFF 💸
-            </button>
-          ))}
-          <button className="discount-btn-sm" onClick={() => setButtonDiscount(0)}>
-            Reset
+        {[10, 20, 30].map((pct) => (
+          <button
+            key={pct}
+            className="discount-btn-sm"
+            onClick={() => setButtonDiscount(pct)}
+          >
+            {pct}% OFF
           </button>
-        </div>
+        ))}
+        <button
+          className="discount-btn-sm"
+          onClick={() => setButtonDiscount(0)}
+        >
+          Reset
+        </button>
 
-        {/* Coupon */}
         <h3>🔑 Coupon</h3>
-        <div className="coupon-section">
-          <input
-            type="text"
-            value={couponCode}
-            onChange={(e) => setCouponCode(e.target.value)}
-            placeholder="Enter coupon code"
-          />
-          <button onClick={handleApplyCoupon}>Apply Coupon</button>
-        </div>
+        <input
+          type="text"
+          value={coupon}
+          onChange={(e) => setCoupon(e.target.value)}
+          placeholder="Enter coupon code"
+        />
+        <button onClick={handleApplyCoupon}>  Apply Coupon</button>
 
-        {/* Payment Method */}
-        <h3>💳 Payment Mode</h3>
-        <div className="payment-method">
-          <button onClick={() => setPaymentMethod("qr")}>📱 QR Code</button>
-          <button onClick={() => setPaymentMethod("card")}>💳 Card</button>
-          <button onClick={() => setPaymentMethod("cod")}>💵 Cash on Delivery</button>
+        <h3>💳 Payment Method</h3>
+        <div className="payment-methods">
+          <button onClick={() => setPaymentMethod("qr")}>QR Code</button>
+          <button onClick={() => setPaymentMethod("card")}>Card</button>
+          <button onClick={() => setPaymentMethod("cod")}>Cash on Delivery</button>
         </div>
-
-        {/* QR Code Section */}
+       
         {paymentMethod === "qr" && (
           <div className="qr-section">
             <h4>Scan UPI QR to pay ₹{finalPrice.toFixed(2)}</h4>
             <QRCode
-              value={`upi://pay?pa=7981678161@ybl&pn=Jyothi Store&am=${finalPrice.toFixed(
+              value={`upi://pay?pa=7981678161@ybl&pn=JyothiStore&am=${finalPrice.toFixed(
                 2
               )}&cu=INR`}
               size={180}
-              fgColor="#000000"
             />
             <p>
               UPI ID: <strong>7981678161@ybl</strong>
             </p>
           </div>
         )}
+        {/* ✅ Card Payment */}
+        {paymentMethod === "card" && (
+          <div className="card-section">
+            <h4>Enter Card Details</h4>
+            <input type="text" placeholder="Cardholder Name" maxLength="50" />
+            <input type="text" placeholder="Card Number (16 digits)" maxLength="16" />
+            <div className="card-row">
+              <input
+                type="text"
+                placeholder="MM/YY"
+                maxLength="5"
+                onInput={(e) => {
+                  let value = e.target.value.replace(/[^0-9]/g, ""); // only digits
 
-        {/* Cash on Delivery Section */}
+                  if (value.length >= 3) {
+                    value = value.slice(0, 2) + "/" + value.slice(2, 4); // add slash after MM
+                  }
+
+                  e.target.value = value;
+                }}
+              />
+              <input type="password" placeholder="CVV" maxLength="3" />
+            </div>
+            <button className="pay-btn">Pay ₹{finalPrice.toFixed(2)}</button>
+          </div>
+        )}
+        {/* ✅ COD Payment */}
+
         {paymentMethod === "cod" && (
           <div className="cod-section">
-            <h4>💵 Cash on Delivery</h4>
-            <p>Please prepare ₹{finalPrice.toFixed(2)} to pay at delivery.</p>
+            <p>Pay ₹{finalPrice.toFixed(2)} at delivery</p>
           </div>
         )}
 
-        {/* Customer Email */}
         <h3>📧 Email</h3>
-        <div className="email-section">
-          <input
-            type="email"
-            value={customerEmail}
-            onChange={(e) => setCustomerEmail(e.target.value)}
-            placeholder="Enter your email"
-          />
-        </div>
+        <input
+          type="email"
+          value={customerEmail}
+          onChange={(e) => setCustomerEmail(e.target.value)}
+          placeholder="Enter your email"
+        />
 
-        {/* Checkout & Complete Buttons */}
-        <button className="checkout-btn" onClick={handleCheckout}>
-          ✅ Checkout & Place Order
-        </button>
         <button className="complete-btn" onClick={handleCompletePurchase}>
           🎉 Complete Purchase
         </button>
